@@ -1,0 +1,266 @@
+# Project Configuration and Standards Guide
+
+## Language Configuration
+- **User Communication**: Polish
+- **Code Elements**: English ONLY (includes code, variables, functions, classes, docstrings, and git commits)
+- **Documentation and README files**: English ONLY (includes README.md, documentation files, API docs, and technical writing)
+
+## Communication Guidelines
+- Be concise and direct in all communications
+- Explain complex operations clearly and thoroughly
+- Ask for clarification when requirements are uncertain
+- Report progress at regular intervals
+- Document all assumptions explicitly
+
+## Research and Documentation Tools
+- **Use MCP tools and web research for comprehensive analysis:**
+  - Context7: Library documentation, versions, and migration paths
+  - AWS Docs: AWS service documentation and best practices
+  - AWS Terraform: Infrastructure security scanning and optimization
+  - WebSearch: Current technology trends, security vulnerabilities, and alternatives
+- **Apply these tools during:**
+  - Project analysis and architecture documentation
+  - Code review for security patterns and best practices
+  - Implementation and coding for best practices verification
+  - Technology upgrade and migration planning
+  - Security vulnerability research and remediation
+  - Library selection and integration decisions
+
+## Technical Standards
+
+### Documentation Requirements
+- **Primary**: Use comprehensive docstrings for all modules, classes, and functions
+- **Comments**: Use sparingly, only for complex or non-obvious logic that cannot be self-documented through code
+
+### Code Quality Standards
+
+#### 1. DRY Principle (Don't Repeat Yourself)
+- Extract repeated logic into reusable functions
+- Create utility functions for common operations (validation, formatting, data transformation)
+- Use shared components for recurring UI patterns
+- Implement service layers for repeated business logic
+
+#### 2. File Organization
+- Maintain files under 300-400 lines of code
+- Split large files by separating concerns:
+  - Data fetching logic
+  - Business logic
+  - UI rendering components
+- Create focused, single-responsibility components
+- Follow the Single Responsibility Principle (SRP)
+
+#### 3. Project Structure
+- Organize files by feature or domain
+- Create clear directory structure based on project needs
+- Separate concerns into logical modules
+- Follow consistent naming conventions throughout the project
+
+#### 4. Testing and Quality Assurance
+- Apply Test-Driven Development (TDD) methodology
+- Write tests before implementation when feasible
+- Use MCP Playwright for browser and E2E testing
+- Maintain minimum 80% code coverage for critical paths
+- Include unit, integration, and end-to-end tests
+
+### Security Requirements
+
+#### 1. Input Validation and Sanitization
+- Validate all user inputs on both client and server sides
+- Use parameterized queries for all database operations
+- Sanitize data before rendering to prevent XSS attacks
+- Implement input type checking and boundary validation
+- Never trust client-side validation alone
+
+#### 2. Authentication & Authorization
+- Protect sensitive routes with authentication middleware
+- Implement proper authorization checks for data access
+- Use role-based access control (RBAC) for different user types
+- Implement secure session management
+- Use industry-standard password hashing algorithms
+- Enforce strong password policies
+- Implement multi-factor authentication for sensitive operations
+
+#### 3. API Security
+- Implement rate limiting on all endpoints, especially authentication
+- Configure secure HTTP headers:
+  - Content-Security-Policy
+  - X-Frame-Options
+  - X-Content-Type-Options
+  - Strict-Transport-Security
+- Use HTTPS for all connections
+- Implement CSRF protection with anti-forgery tokens
+- Validate request origins
+- Use API versioning for backward compatibility
+
+#### 4. Secrets Management
+- Never hardcode secrets or credentials in source code
+- Store sensitive values in environment variables
+- Use dedicated secret management services for production
+- Rotate secrets regularly
+- Implement proper key management procedures
+
+#### 5. Cross-Site Scripting (XSS) Prevention
+- Sanitize all user input before display
+- Use framework's built-in protection mechanisms
+- Implement Content Security Policy headers
+- Escape special characters in dynamic content
+- Use trusted types where available
+
+### Error Management
+
+#### 1. Comprehensive Error Handling
+- Catch and handle specific error types appropriately
+- Log errors with sufficient context for debugging
+- Present user-friendly error messages in the UI
+- Never expose sensitive information in error messages
+- Implement global error boundaries in frontend applications
+
+#### 2. Asynchronous Operations
+- Use try/catch blocks with async/await consistently
+- Handle network failures gracefully with retry logic
+- Implement proper loading states for better UX
+- Set appropriate timeouts for async operations
+- Handle promise rejections properly
+
+### Performance Optimization
+
+#### 1. Computational Efficiency
+- Cache results of expensive calculations
+- Use memoization for pure functions
+- Implement pagination for large datasets
+- Use database query optimization techniques
+- Implement lazy loading where appropriate
+
+#### 2. Memory Management
+- Clean up event listeners and subscriptions on unmount
+- Cancel pending requests when components unmount
+- Clear intervals and timeouts when no longer needed
+- Avoid memory leaks in closures
+- Monitor memory usage in production
+
+#### 3. Rendering Optimization
+- Minimize unnecessary re-renders
+- Use virtualization for long lists
+- Implement code splitting and lazy loading
+- Optimize bundle sizes
+- Use performance profiling tools regularly
+
+### Database Operations
+
+#### 1. Transaction Management
+- Wrap related operations in transactions
+- Ensure ACID compliance for critical operations
+- Implement proper rollback mechanisms
+- Handle deadlocks gracefully
+- Use appropriate isolation levels
+
+#### 2. Query Optimization
+- Create indexes for frequently queried fields
+- Use query execution plans to identify bottlenecks
+- Select only required fields (avoid SELECT *)
+- Implement efficient pagination strategies
+- Use database-specific optimization features
+
+#### 3. Connection Management
+- Use connection pooling
+- Close connections properly after operations
+- Implement retry mechanisms for transient failures
+- Monitor connection pool health
+- Set appropriate connection timeouts
+
+### API Design
+
+#### 1. RESTful Principles
+- Use appropriate HTTP methods (GET, POST, PUT, PATCH, DELETE)
+- Return consistent response formats
+- Use meaningful HTTP status codes
+- Implement HATEOAS where appropriate
+- Follow REST naming conventions
+
+#### 2. Endpoint Design
+- Organize endpoints by resource
+- Implement API versioning strategy
+- Document all endpoints with API documentation standards
+- Provide comprehensive examples
+- Use consistent URL patterns
+
+#### 3. Error Response Standards
+- Return structured error objects
+- Include error codes and descriptive messages
+- Provide actionable error information
+- Maintain detailed API error logs
+- Implement request tracing
+
+### Frontend Development
+
+#### 1. Form Handling
+- Implement real-time validation
+- Provide clear, contextual error messages
+- Handle submission errors gracefully
+- Implement proper loading states
+- Use debouncing for performance
+
+#### 2. State Management
+- Choose appropriate state management solution
+- Avoid prop drilling through component hierarchies
+- Keep state close to where it's needed
+- Implement proper state persistence
+- Use immutable state updates
+
+#### 3. Accessibility (A11Y)
+- Use semantic HTML elements
+- Add proper ARIA attributes for complex widgets
+- Ensure full keyboard navigability
+- Maintain WCAG 2.1 AA compliance
+- Test with screen readers regularly
+
+### Code Maintainability
+
+#### 1. Naming Conventions
+- Use descriptive, self-documenting names
+- Avoid abbreviations and cryptic naming
+- Follow consistent naming patterns:
+  - camelCase for variables and functions
+  - PascalCase for classes and components
+  - UPPER_SNAKE_CASE for constants
+- Use domain-specific terminology correctly
+
+#### 2. Documentation Standards
+- Document complex business logic thoroughly
+- Explain the "why" behind architectural decisions
+- Keep documentation synchronized with code changes
+- Include examples in documentation
+- Maintain a project README with setup instructions
+- Keep documentation concise and focused. Avoid redundant information, multiple ways to achieve the same goal, and unnecessary details that overwhelm users
+- Structure documentation logically: overview → setup → usage → management, without extensive troubleshooting sections for common issues
+
+#### 3. Testing Strategy
+- Write unit tests for business logic
+- Create integration tests for API endpoints
+- Implement E2E tests for critical user journeys
+- Use test data factories for consistency
+- Maintain test documentation
+
+## Common Pitfalls to Avoid
+- Creating files or components unnecessarily
+- Skipping security validations for convenience
+- Ignoring proper error handling
+- Insufficient test coverage for critical paths
+- Overengineering simple solutions
+- Proceeding without user verification
+- Hardcoding configuration values
+- Ignoring performance implications
+- Neglecting code reviews
+- Skipping documentation updates
+- **CRITICAL: Git/GitHub Operations** - NEVER execute ANY Git or GitHub commands autonomously (git add, commit, push, pull, merge, rebase, gh pr create/merge, etc.). Execute ONLY when user explicitly requests it or through Claude Code slash commands
+- Never automatically commit or push changes after completing tasks - always wait for explicit user permission
+- **CRITICAL: Task Scope** - Execute ONLY the specific task requested by the user. Do NOT add ANY additional tasks, features, improvements, fixes, modifications, refactoring, optimizations, or enhancements beyond what was explicitly asked. Every action must be directly related to the user's request. If you identify other opportunities or issues, you may mention them but NEVER act on them without explicit user approval
+
+## Best Practices Summary
+- Always prioritize security and user data protection
+- Write clean, maintainable code that others can understand
+- Test thoroughly before deployment
+- Communicate your decisions and explain complex logic
+- Optimize for performance without sacrificing readability
+- Follow established patterns and conventions
+- Stay updated with security best practices

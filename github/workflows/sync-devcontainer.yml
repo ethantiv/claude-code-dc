@@ -1,0 +1,344 @@
+name: Sync DevContainer to Projects
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.devcontainer/**'
+      - '!.devcontainer/VERSION.json'
+      - '.github/workflows/sync-devcontainer.yml'
+      - '.github/workflows/sync-repos.json'
+  
+  workflow_dispatch:
+    inputs:
+      target_repo:
+        description: 'Specific repository to sync (leave empty for all)'
+        required: false
+        type: string
+      create_pr:
+        description: 'Create PR instead of direct push'
+        required: false
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+      auto_merge:
+        description: 'Enable auto-merge for PRs'
+        required: false
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+      version: ${{ steps.version.outputs.version }}
+      timestamp: ${{ steps.version.outputs.timestamp }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_TOKEN }}
+          fetch-depth: 0
+      
+      - name: Set up matrix
+        id: set-matrix
+        run: |
+          if [ -n "${{ github.event.inputs.target_repo }}" ]; then
+            echo "matrix=[\"${{ github.event.inputs.target_repo }}\"]" >> $GITHUB_OUTPUT
+          else
+            if [ -f .github/workflows/sync-repos.json ]; then
+              REPOS=$(cat .github/workflows/sync-repos.json | jq -c '.repositories[].name')
+              MATRIX=$(echo $REPOS | jq -s -c .)
+              echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
+            else
+              echo "matrix=[\"chomikuj-to-csv\"]" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Generate version information
+        id: version
+        run: |
+          # Get current version from VERSION.json
+          CURRENT_VERSION=$(jq -r '.version' .devcontainer/VERSION.json)
+          
+          # Extract major and minor parts
+          MAJOR=$(echo $CURRENT_VERSION | cut -d'.' -f1)
+          MINOR=$(echo $CURRENT_VERSION | cut -d'.' -f2)
+          
+          # Increment minor version
+          NEW_MINOR=$((MINOR + 1))
+          NEW_VERSION="${MAJOR}.${NEW_MINOR}"
+          
+          # Get current timestamp
+          ISO_TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "timestamp=$ISO_TIMESTAMP" >> $GITHUB_OUTPUT
+          
+          echo "Generated version: $NEW_VERSION (previous: $CURRENT_VERSION)"
+
+      - name: Update VERSION.json
+        run: |
+          cat > .devcontainer/VERSION.json << EOF
+          {
+            "version": "${{ steps.version.outputs.version }}",
+            "timestamp": "${{ steps.version.outputs.timestamp }}"
+          }
+          EOF
+          
+          echo "Updated VERSION.json with version ${{ steps.version.outputs.version }}"
+
+      - name: Commit version update to source repo
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git add .devcontainer/VERSION.json
+          
+          if git diff --staged --quiet; then
+            echo "No version changes to commit"
+          else
+            git commit -m "chore: update DevContainer version to ${{ steps.version.outputs.version }}"
+            git push origin main
+            echo "Version update committed to source repository"
+          fi
+
+  sync:
+    needs: prepare
+    if: needs.prepare.outputs.matrix != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        repository: ${{ fromJson(needs.prepare.outputs.matrix) }}
+    
+    steps:
+      - name: Checkout source (this repo)
+        uses: actions/checkout@v4
+        with:
+          path: source
+          ref: main
+
+      - name: Checkout target repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/${{ matrix.repository }}
+          token: ${{ secrets.GH_TOKEN }}
+          path: target
+
+      - name: Sync DevContainer and Claude Code files
+        id: sync
+        run: |
+          echo "📦 Syncing DevContainer and Claude Code configuration to ${{ matrix.repository }}"
+          
+          echo "📁 Removing existing directories..."
+          rm -rf target/.devcontainer
+          
+          echo "📁 Copying .devcontainer directory..."
+          cp -r source/.devcontainer target/.devcontainer
+          
+          echo "📄 Ensuring .env file exists for DevContainer compatibility..."
+          if [[ ! -f target/.devcontainer/.env ]]; then
+            echo "# DevContainer environment variables" > target/.devcontainer/.env
+            echo "# Add your environment variables here if needed" >> target/.devcontainer/.env
+            echo "✅ Created .env file with comments"
+          else
+            echo "✅ .env file already exists"
+          fi
+          
+          
+          cd target
+          git add -A
+          
+          if git diff --staged --quiet; then
+            echo "✅ No changes detected"
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "🔄 Changes detected"
+            git diff --staged --name-status
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Configure Git
+        if: steps.sync.outputs.changed == 'true'
+        working-directory: target
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Create branch and commit
+        if: steps.sync.outputs.changed == 'true'
+        id: commit
+        working-directory: target
+        run: |
+          TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+          BRANCH="update-devcontainer-$TIMESTAMP"
+          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+          
+          git checkout -b $BRANCH
+          
+          git commit -m "chore: update DevContainer and Claude Code configuration to ${{ needs.prepare.outputs.version }}
+
+          Updates from ${{ github.repository }}@${{ github.sha }}
+          
+          Changes:
+          - Synced .devcontainer/ directory (includes configuration and commands)
+          - Updated configuration to version ${{ needs.prepare.outputs.version }}
+          
+          Source: https://github.com/${{ github.repository }}/commit/${{ github.sha }}"
+          
+          git push origin $BRANCH
+
+      - name: Create Pull Request
+        if: steps.sync.outputs.changed == 'true' && github.event.inputs.create_pr != 'false'
+        id: pr
+        working-directory: target
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          PR_BODY="## 🔧 DevContainer and Claude Code Configuration Update
+
+          This PR updates the DevContainer and Claude Code configuration from the central repository.
+          
+          ### 📦 Source
+          - Repository: [\`${{ github.repository }}\`](https://github.com/${{ github.repository }})
+          - Commit: [\`${{ github.sha }}\`](https://github.com/${{ github.repository }}/commit/${{ github.sha }})
+          - Branch: \`${{ github.ref_name }}\`
+          
+          ### 📝 Changes
+          - Updates \`.devcontainer/\` directory with the latest DevContainer configuration, MCP servers, Claude Code settings, and custom slash commands
+          - **Version**: ${{ needs.prepare.outputs.version }}
+          
+          ### 🤖 Automation
+          - This PR was automatically generated by GitHub Actions
+          - Auto-merge is ${{ github.event.inputs.auto_merge == 'false' && 'disabled' || 'enabled' }}
+          
+          ---
+          <details>
+          <summary>Workflow Run</summary>
+          
+          - Run ID: \`${{ github.run_id }}\`
+          - Run Number: \`${{ github.run_number }}\`
+          - [View workflow run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          </details>"
+          
+          PR_URL=$(gh pr create \
+            --title "🔧 Update DevContainer and Claude Code configuration to ${{ needs.prepare.outputs.version }}" \
+            --body "$PR_BODY" \
+            --base main \
+            --head ${{ steps.commit.outputs.branch }})
+          
+          echo "✅ Pull request created: $PR_URL"
+          echo "pr_url=$PR_URL" >> $GITHUB_OUTPUT
+          
+          PR_NUMBER=$(echo $PR_URL | grep -oE '[0-9]+$')
+          echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+
+      - name: Enable auto-merge
+        if: |
+          steps.sync.outputs.changed == 'true' && 
+          github.event.inputs.create_pr != 'false' && 
+          github.event.inputs.auto_merge != 'false'
+        working-directory: target
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          echo "🤖 Enabling auto-merge for PR #${{ steps.pr.outputs.pr_number }}"
+          
+          # Retry logic with exponential backoff
+          MAX_ATTEMPTS=5
+          DELAY=5
+          
+          for attempt in $(seq 1 $MAX_ATTEMPTS); do
+            echo "📋 Attempt $attempt/$MAX_ATTEMPTS - waiting ${DELAY}s before auto-merge..."
+            sleep $DELAY
+            
+            if gh pr merge ${{ steps.pr.outputs.pr_number }} --auto --squash --delete-branch; then
+              echo "✅ Auto-merge enabled successfully on attempt $attempt"
+              exit 0
+            else
+              echo "⚠️ Auto-merge failed on attempt $attempt"
+              
+              # Try to approve and enable auto-merge
+              if gh pr review ${{ steps.pr.outputs.pr_number }} --approve --body "Auto-approved by sync workflow (attempt $attempt)"; then
+                echo "✅ PR approved on attempt $attempt"
+                sleep 2  # Brief pause after approval
+                
+                if gh pr merge ${{ steps.pr.outputs.pr_number }} --auto --squash --delete-branch; then
+                  echo "✅ Auto-merge enabled after approval on attempt $attempt"
+                  exit 0
+                fi
+              fi
+            fi
+            
+            # Exponential backoff: double delay for next attempt
+            DELAY=$((DELAY * 2))
+            
+            if [ $attempt -lt $MAX_ATTEMPTS ]; then
+              echo "🔄 Retrying in ${DELAY}s..."
+            fi
+          done
+          
+          echo "❌ Auto-merge failed after $MAX_ATTEMPTS attempts"
+          echo "ℹ️ PR #${{ steps.pr.outputs.pr_number }} remains open for manual merge"
+
+      - name: Direct push
+        if: |
+          steps.sync.outputs.changed == 'true' && 
+          github.event.inputs.create_pr == 'false'
+        working-directory: target
+        run: |
+          echo "📤 Pushing directly to main branch"
+          
+          git checkout main
+          git commit -m "chore: update DevContainer and Claude Code configuration to ${{ needs.prepare.outputs.version }}
+
+          Updates from ${{ github.repository }}@${{ github.sha }}
+          
+          Changes:
+          - Synced .devcontainer/ directory (includes configuration and commands)
+          - Updated configuration to version ${{ needs.prepare.outputs.version }}
+          
+          Source: https://github.com/${{ github.repository }}/commit/${{ github.sha }}"
+          git push origin main
+          
+          echo "✅ Changes pushed directly to main"
+
+  summary:
+    needs: [prepare, sync]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Summary
+        run: |
+          echo "## 📊 Sync Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Source**: \`${{ github.repository }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit**: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Triggered by**: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Create PR**: ${{ github.event.inputs.create_pr || 'true' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Auto-merge**: ${{ github.event.inputs.auto_merge || 'true' }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ needs.prepare.outputs.matrix }}" == "[]" ]; then
+            echo "### ⚠️ No Repositories Configured" >> $GITHUB_STEP_SUMMARY
+            echo "No repositories are configured for synchronization in \`.github/workflows/sync-repos.json\`" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "To add repositories, update the configuration file with:" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`json" >> $GITHUB_STEP_SUMMARY
+            echo '{' >> $GITHUB_STEP_SUMMARY
+            echo '  "repositories": [' >> $GITHUB_STEP_SUMMARY
+            echo '    {"name": "repo-name"}' >> $GITHUB_STEP_SUMMARY
+            echo '  ]' >> $GITHUB_STEP_SUMMARY
+            echo '}' >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### Repositories Synced" >> $GITHUB_STEP_SUMMARY
+            echo "See individual job results above for details." >> $GITHUB_STEP_SUMMARY
+          fi

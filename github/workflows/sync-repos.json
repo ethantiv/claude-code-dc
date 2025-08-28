@@ -1,0 +1,14 @@
+{
+  "repositories": [
+    {
+      "name": "exmaple-repo",
+      "owner": "example-owner",
+      "create_pr": true,
+      "auto_merge": true
+    }
+  ],
+  "settings": {
+    "default_create_pr": true,
+    "default_auto_merge": true
+  }
+}

@@ -43,14 +43,6 @@
       "headers": {
         "Authorization": "Bearer GH_TOKEN"
       }
-    },
-    "playwright": {
-      "type": "stdio",
-      "command": "npx",
-      "args": [
-        "@playwright/mcp@latest"
-      ],
-      "env": {}
     }
   }
 }

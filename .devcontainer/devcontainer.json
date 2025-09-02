@@ -8,17 +8,13 @@
     "ghcr.io/devcontainers/features/python:1": {},
     "ghcr.io/devcontainers/features/terraform:1": {}
   },
-  "initializeCommand": "touch .devcontainer/.env || true",
+  "initializeCommand": "touch .devcontainer/.env || true && echo \"\" && echo \"🔧 DevContainer Version: $(cat .devcontainer/VERSION.json | jq -r '.version') ($(cat .devcontainer/VERSION.json | jq -r '.timestamp'))\"",
   "onCreateCommand": {
     "setup-claude-dir": "sudo mkdir -p /home/vscode/.claude && sudo chown -R vscode:vscode /home/vscode/.claude",
     "setup-codex-dir": "sudo mkdir -p /home/vscode/.codex && sudo chown -R vscode:vscode /home/vscode/.codex",
     "install-uv": "pipx install uv"
   },
-  "postCreateCommand": {
-    "install-claude": "npm install -g @anthropic-ai/claude-code@latest",
-    "install-codex": "npm install -g @openai/codex",
-    "setup-environment": "if [ -f .devcontainer/setup-claude-environment.sh ]; then chmod +x .devcontainer/setup-claude-environment.sh && ./.devcontainer/setup-claude-environment.sh; fi"
-  },
+  "postCreateCommand": "npm install -g @anthropic-ai/claude-code@latest && npm install -g @openai/codex && if [ -f .devcontainer/setup-env.sh ]; then chmod +x .devcontainer/setup-env.sh && ./.devcontainer/setup-env.sh; fi",
   "mounts": [
     {
       "source": "claude-code-config-${devcontainerId}",
@@ -33,7 +29,6 @@
   ],
   "containerEnv": {
     "CLAUDE_CONFIG_DIR": "/home/vscode/.claude",
-    "CODEX_CONFIG_DIR": "/home/vscode/.codex",
     "TZ": "Europe/Warsaw",
     "LC_TIME": "pl_PL.UTF-8"
   },
@@ -44,8 +39,7 @@
   "customizations": {
     "vscode": {
       "settings": {
-        "workbench.colorTheme": "GitHub Dark Default",
-        "locale": "en"
+        "workbench.colorTheme": "GitHub Dark Default"
       },
       "extensions": [
         "anthropic.claude-code",
@@ -65,6 +59,7 @@
         "ms-toolsai.jupyter-renderers",
         "ms-toolsai.vscode-jupyter-cell-tags",
         "ms-toolsai.vscode-jupyter-slideshow",
+        "openai.chatgpt",
         "redhat.vscode-yaml"
       ]
     },

@@ -8,7 +8,7 @@ Automatically configures a complete Claude Code and Codex environment with MCP s
 - GitHub CLI, Node.js, Python, Terraform
 - Claude Code CLI with configuration
 - OpenAI Codex CLI with configuration
-- MCP servers: AWS tools, GitHub, Playwright, Context7
+- MCP servers
 
 **Custom slash commands**:
 - `/git-commit`: Conventional commit generator
@@ -17,27 +17,49 @@ Automatically configures a complete Claude Code and Codex environment with MCP s
 - `/github-pr-create`: Pull Request creation
 - `/polish-correction`: Polish text correction
 
-## GitHub Token Setup
+## Authentication Setup
 
-**Local**: Add to `.devcontainer/.env`:
+### GitHub Token (Required)
+
+**Local Development**: Add to `.devcontainer/.env`:
 ```bash
 GH_TOKEN=ghp_your_token_here
 ```
 
 **Codespaces**: Settings → Codespaces → Secrets → `GH_TOKEN`
 
-Token permissions: `repo`, `read:user`, `workflow`
+Required permissions: `repo`, `read:user`, `workflow`
+
+### Optional Authentication (CLI Tools)
+
+**Local Development**: Add to `.devcontainer/.env`:
+```bash
+# Codex authentication (encode existing auth.json)
+base64 -w 0 ~/.codex/auth.json
+CODEX_AUTH=your_base64_encoded_auth_json_here
+
+# Claude Code authentication (encode existing credentials.json)  
+base64 -w 0 ~/.claude/.credentials.json
+CLAUDE_AUTH=your_base64_encoded_credentials_json_here
+```
+
+**Codespaces**: Add secrets in Settings → Codespaces → Secrets:
+
+1. **CODEX_AUTH**: base64-encoded content of `~/.codex/auth.json`
+2. **CLAUDE_AUTH**: base64-encoded content of `~/.claude/.credentials.json`
+
+Files are automatically created with proper permissions (600) on container restart.
 
 ## Files Structure
 
 ```
 .devcontainer/
-├── devcontainer.json              # Container definition
-├── setup-claude-environment.sh    # Automatic setup script
-├── configuration/                 # Claude Code & Codex config
-│   ├── mcp-servers.json          # MCP server definitions
+├── devcontainer.json          # Container definition
+├── setup-env.sh               # Complete environment setup script
+├── configuration/             # Claude Code & Codex config
+│   ├── mcp-servers.json      # MCP server definitions
 │   └── settings.devcontainer.json # Claude settings
-└── commands/                      # Custom slash commands
+└── commands/                  # Custom slash commands
     ├── code-review.md
     ├── git-commit.md
     └── ... (other commands)

@@ -17,7 +17,9 @@ BRANCH DETECTION AND FILE SELECTION:
 - Process ONLY these files for comment removal
 
 **IF on default branch:**
-- Process ALL source files in the repository
+- First check if there are staged changes: `git status --porcelain | grep '^[MADRCU]'`
+- If staged changes exist: Process ONLY staged files
+- If no staged changes: Process ALL source files in the repository
 - Use Glob tool to find all source files: `**/*.{js,ts,jsx,tsx,py,java,go,rs,php,rb,c,cpp,h,tf,tfvars}`
 
 FILES TO PROCESS:
@@ -28,6 +30,10 @@ FILES TO PROCESS:
 
 ```
 !`git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@' || echo "main"`
+```
+
+```
+!`git status --porcelain | grep '^[MADRCU]'`
 ```
 
 OBJECTIVE:
@@ -99,7 +105,10 @@ ANALYSIS METHODOLOGY:
 1. Check current branch with `git branch --show-current`
 2. Detect default branch automatically using git's remote HEAD reference
 3. If NOT on default branch: Get ONLY modified files vs default branch
-4. If on default branch: Find ALL source files with Glob patterns
+4. If on default branch:
+   - Check for staged changes with `git status --porcelain | grep '^[MADRCU]'`
+   - If staged changes exist: Process ONLY staged files
+   - If no staged changes: Find ALL source files with Glob patterns
 5. Create complete list of files to process
 6. Verify list is complete before proceeding
 
@@ -178,7 +187,10 @@ PROCESSING STRATEGY:
 
 **1. File Selection Based on Branch:**
 
-The command will automatically detect the current branch and default branch, then determine which files to process based on whether you're working on the default branch or a feature branch.
+The command will automatically detect the current branch and default branch, then determine which files to process:
+- **Feature branch**: Only files modified vs default branch
+- **Default branch with staged changes**: Only staged files
+- **Default branch with no staged changes**: All source files in repository
 
 **2. Exhaustive Comment Detection:**
 - Scan EVERY line of EVERY file in scope
@@ -265,6 +277,7 @@ REPORTING FORMAT:
 **Completion Checklist:**
 ```
 ✓ Branch detected: [main/feature branch name]
+✓ Staged changes checked: [yes/no]
 ✓ Files in scope identified: [number]
 ✓ Files processed: [number] (MUST equal files in scope)
 ✓ Files with comments found: [number]
@@ -274,7 +287,7 @@ REPORTING FORMAT:
 
 **Summary Report:**
 ```
-SCOPE: [All files / Modified files only]
+SCOPE: [All files / Staged files only / Modified files only]
 Files Processed: [number] of [total in scope]
 Comments Removed: [total number across ALL files]
 Comments Preserved: [number]

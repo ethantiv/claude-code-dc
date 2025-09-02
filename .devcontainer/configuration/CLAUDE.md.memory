@@ -58,7 +58,6 @@
 #### 4. Testing and Quality Assurance
 - Apply Test-Driven Development (TDD) methodology
 - Write tests before implementation when feasible
-- Use MCP Playwright for browser and E2E testing
 - Maintain minimum 80% code coverage for critical paths
 - Include unit, integration, and end-to-end tests
 

@@ -4,5 +4,10 @@
     "deny": [],
     "ask": [],
     "defaultMode": "bypassPermissions"
-  }
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "input=$(cat); model=\"$(echo \"$input\" | jq -r '.model.display_name')\"; output_style=\"$(echo \"$input\" | jq -r '.output_style.name // \"default\"')\"; printf \"\\033[1;35m%s\\033[0m (\\033[0;33m%s\\033[0m)\" \"$model\" \"$output_style\""
+  },
+  "model": "opusplan"
 }
